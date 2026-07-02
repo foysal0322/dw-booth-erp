@@ -1,0 +1,229 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String    @id @default(cuid())
+  employeeId     String?   @unique
+  name           String
+  email          String?   @unique
+  phone          String    @unique
+  passwordHash   String
+  nid            String?   @unique
+  dob            DateTime?
+  gender         String?
+  bloodGroup     String?
+  
+  role           String    @default("OPERATOR") // "ADMIN", "MANAGER", "SUPERVISOR", "OPERATOR"
+  isActive       Boolean   @default(true)
+  joiningDate    DateTime  @default(now())
+  
+  // Self relation for Supervisor -> Manager
+  managerId      String?
+  manager        User?     @relation("ManagerToSupervisor", fields: [managerId], references: [id])
+  supervisors    User[]    @relation("ManagerToSupervisor")
+
+  // Supervisor -> Booths
+  supervisedBooths Booth[] @relation("BoothSupervisor")
+  
+  // Operator -> Booth
+  assignedBoothId String?
+  assignedBooth   Booth?    @relation("BoothOperators", fields: [assignedBoothId], references: [id])
+  
+  // Relations
+  addresses      Address[]
+  certificates   AcademicCertificate[]
+  references     Reference[]
+  documents      Document[]
+  attendances    Attendance[]
+  auditLogs      AuditLog[]
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+}
+
+model Address {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String   // "PRESENT" or "PERMANENT"
+  address     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AcademicCertificate {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  degree      String
+  institute   String
+  year        String
+  fileUrl     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Reference {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  contact     String
+  relationship String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String   // e.g. "NID_SCAN", "PHOTOGRAPH", "CERTIFICATE"
+  fileUrl     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Booth {
+  id               String   @id @default(cuid())
+  name             String
+  code             String   @unique
+  address          String
+  latitude         Float?
+  longitude        Float?
+  googleMapLink    String?
+  installationDate DateTime?
+  operatingHours   String?  // e.g. "12 Hours", "16 Hours"
+  status           String   @default("ACTIVE") // ACTIVE, INACTIVE, MAINTENANCE
+
+  supervisorId     String?
+  supervisor       User?    @relation("BoothSupervisor", fields: [supervisorId], references: [id])
+
+  operators        User[]   @relation("BoothOperators")
+
+  phones           Phone[]
+  assets           Asset[]
+  sales            Sale[]
+  requisitions     Requisition[]
+  complaints       Complaint[]
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  deletedAt        DateTime?
+}
+
+model Phone {
+  id           String   @id @default(cuid())
+  imei         String   @unique
+  brand        String
+  model        String
+  purchaseDate DateTime?
+  condition    String   // "NEW", "USED"
+  purchasedBy  String?
+  warranty     String?
+  status       String   @default("ACTIVE")
+
+  boothId      String?
+  booth        Booth?   @relation(fields: [boothId], references: [id])
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+}
+
+model Asset {
+  id           String   @id @default(cuid())
+  name         String
+  category     String   // e.g. "FURNITURE", "ELECTRONICS", "CLEANING"
+  quantity     Int      @default(1)
+  purchaseDate DateTime?
+  condition    String
+  status       String   @default("ACTIVE")
+  remarks      String?
+
+  boothId      String?
+  booth        Booth?   @relation(fields: [boothId], references: [id])
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+}
+
+model Attendance {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkIn      DateTime @default(now())
+  checkOut     DateTime?
+  latitude     Float
+  longitude    Float
+  distance     Float    // Distance from booth in meters
+  deviceInfo   String?
+  ipAddress    String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Sale {
+  id             String   @id @default(cuid())
+  date           DateTime @default(now())
+  boothId        String
+  booth          Booth    @relation(fields: [boothId], references: [id])
+  waterSold      Float    // In liters
+  cardsSold      Int
+  rechargeAmount Float
+  cashCollection Float
+  remarks        String?
+  status         String   @default("DRAFT") // DRAFT, SUBMITTED, VERIFIED
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Requisition {
+  id          String   @id @default(cuid())
+  boothId     String
+  booth       Booth    @relation(fields: [boothId], references: [id])
+  item        String
+  quantity    Int
+  reason      String
+  priority    String   // LOW, MEDIUM, HIGH
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED, DELIVERED
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Complaint {
+  id          String   @id @default(cuid())
+  boothId     String
+  booth       Booth    @relation(fields: [boothId], references: [id])
+  title       String
+  description String
+  attachment  String?
+  priority    String   // LOW, MEDIUM, HIGH
+  status      String   @default("PENDING") // PENDING, RESOLVED, CLOSED
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  action      String   // LOGIN, PROFILE_UPDATE, SALES_SUBMISSION
+  entity      String?  // Table name or component
+  details     String?  // JSON string of changes
+  ipAddress   String?
+
+  createdAt   DateTime @default(now())
+}
