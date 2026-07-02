@@ -1,6 +1,4 @@
-# AI Design Prompt for Drinkwell Water ATM Booth ERP (Mobile-First)
 
-**Prompt:**
 
 Design a **modern, clean, enterprise-grade, mobile-first ERP web application** for **Drinkwell Water ATM Booth Management System**. The application should feel similar to **Linear, Notion, Stripe Dashboard, Vercel Dashboard, and Google Material 3**, combining simplicity with professional enterprise usability.
 
